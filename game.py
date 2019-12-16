@@ -3,9 +3,9 @@ import math
 import random
 import pygame
 
-NUM_PADDLES = 50 #works best with at least 5 for single player, 4 for multi player
-AI_PLAYERS = 
-MULTI = False
+NUM_PADDLES = 5 #works best with at least 5 for single player, 4 for multi player
+AI_PLAYERS = 5
+MULTI = True
 UNIQUE_KEYS = [(pygame.K_BACKQUOTE, pygame.K_1),
                (pygame.K_LEFT, pygame.K_RIGHT), (pygame.K_a, pygame.K_d),
                (pygame.K_5, pygame.K_6), (pygame.K_8, pygame.K_9),
@@ -56,7 +56,6 @@ class Paddle(pygame.sprite.Sprite):
         super().__init__(groups)
         self.ai = ai
         angle += math.pi
-        print(math.degrees(angle))
         self.image = pygame.Surface((length, length), pygame.SRCALPHA)
         width = int(length * abs(math.cos(angle)))
         height = int(length * abs(math.sin(angle)))
@@ -111,7 +110,6 @@ class Paddle(pygame.sprite.Sprite):
             ball_to_pad = math.pi - ball_to_pad
             if self.angle > math.pi:
                 if self.angle%math.pi >= (math.pi/2):
-                    print(math.degrees(self.angle%math.pi), math.degrees(perp), math.degrees(ball_to_pad))
                     if ball_to_pad <= self.angle%math.pi and ball_to_pad >= perp:
                         if self.linear_pos < self.restriction:
                             self.position[0] += dx
