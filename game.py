@@ -3,7 +3,8 @@ import math
 import random
 import pygame
 
-NUM_PADDLES = 5 #works best with at least 5 for single player, 4 for multi player
+NUM_PADDLES = 50 #works best with at least 5 for single player, 4 for multi player
+AI_PLAYERS = 
 MULTI = False
 UNIQUE_KEYS = [(pygame.K_BACKQUOTE, pygame.K_1),
                (pygame.K_LEFT, pygame.K_RIGHT), (pygame.K_a, pygame.K_d),
@@ -51,9 +52,11 @@ class Ball(pygame.sprite.Sprite):
         return 0
                 
 class Paddle(pygame.sprite.Sprite):
-    def __init__(self, centerpt, length, thickness, angle, color, keys, *groups):
+    def __init__(self, centerpt, length, thickness, angle, color, keys, ai, *groups):
         super().__init__(groups)
+        self.ai = ai
         angle += math.pi
+        print(math.degrees(angle))
         self.image = pygame.Surface((length, length), pygame.SRCALPHA)
         width = int(length * abs(math.cos(angle)))
         height = int(length * abs(math.sin(angle)))
@@ -67,34 +70,103 @@ class Paddle(pygame.sprite.Sprite):
         self.angle = angle%(2*math.pi)
         self.mask = pygame.mask.from_surface(self.image)
         self.keys = keys
-    def update(self):
-        pressed = pygame.key.get_pressed()
-        if not MULTI:
-            if pressed[pygame.K_LEFT]:
-                dy = self.speed*math.sin(self.angle)
-                dx = -self.speed*math.cos(self.angle)
-                self.position[0] += dx
-                self.position[1] += dy
-                self.rect.center = self.position
-            elif pressed[pygame.K_RIGHT]:
-                dy = -self.speed*math.sin(self.angle)
-                dx = self.speed*math.cos(self.angle)
-                self.position[0] += dx
-                self.position[1] += dy
-                self.rect.center = self.position
+        self.restriction = 40
+        self.linear_pos = 0
+    def update(self, ball):
+        dy = self.speed*math.sin(self.angle)
+        dx = self.speed*math.cos(self.angle)
+        if not self.ai:
+            pressed = pygame.key.get_pressed()
+            if not MULTI:
+                if pressed[pygame.K_LEFT]:
+                    if self.linear_pos < self.restriction:
+                        self.position[0] -= dx
+                        self.position[1] += dy
+                        self.rect.center = self.position
+                        self.linear_pos += 1
+                elif pressed[pygame.K_RIGHT]:
+                    if self.linear_pos > -self.restriction:
+                        self.position[0] += dx
+                        self.position[1] -= dy
+                        self.rect.center = self.position
+                        self.linear_pos -= 1
+            else:
+                if pressed[self.keys[0]]:
+                    if self.linear_pos < self.restriction:
+                        self.position[0] -= dx
+                        self.position[1] += dy
+                        self.rect.center = self.position
+                        self.linear_pos += 1
+                elif pressed[self.keys[1]]:
+                    if self.linear_pos > -self.restriction:
+                        self.position[0] += dx
+                        self.position[1] -= dy
+                        self.rect.center = self.position
+                        self.linear_pos -= 1
         else:
-            if pressed[self.keys[0]]:
-                dy = self.speed*math.sin(self.angle)
-                dx = -self.speed*math.cos(self.angle)
-                self.position[0] += dx
-                self.position[1] += dy
-                self.rect.center = self.position
-            elif pressed[self.keys[1]]:
-                dy = -self.speed*math.sin(self.angle)
-                dx = self.speed*math.cos(self.angle)
-                self.position[0] += dx
-                self.position[1] += dy
-                self.rect.center = self.position
+            perp = (self.angle + math.pi/2)%math.pi
+            ball_to_pad = math.atan((ball.position[1] - self.position[1])/(ball.position[0] - self.position[0]))
+            if ball_to_pad < 0:
+                ball_to_pad += math.pi
+            ball_to_pad = math.pi - ball_to_pad
+            if self.angle > math.pi:
+                if self.angle%math.pi >= (math.pi/2):
+                    print(math.degrees(self.angle%math.pi), math.degrees(perp), math.degrees(ball_to_pad))
+                    if ball_to_pad <= self.angle%math.pi and ball_to_pad >= perp:
+                        if self.linear_pos < self.restriction:
+                            self.position[0] += dx
+                            self.position[1] -= dy
+                            self.rect.center = self.position
+                            self.linear_pos += 1
+                    else:
+                        if self.linear_pos > -self.restriction:
+                            self.position[0] -= dx
+                            self.position[1] += dy
+                            self.rect.center = self.position
+                            self.linear_pos -= 1
+                else:
+                    if ball_to_pad > self.angle%math.pi and ball_to_pad <= perp:
+                        if self.linear_pos < self.restriction:
+                            self.position[0] -= dx
+                            self.position[1] += dy
+                            self.rect.center = self.position
+                            self.linear_pos += 1
+                    else:
+                        if self.linear_pos > -self.restriction:
+                            self.position[0] += dx
+                            self.position[1] -= dy
+                            self.rect.center = self.position
+                            self.linear_pos -= 1
+            else:
+                if self.angle%math.pi >= (math.pi/2):
+                    if ball_to_pad <= self.angle%math.pi and ball_to_pad >= perp:
+                        if self.linear_pos < self.restriction:
+                            self.position[0] += dx
+                            self.position[1] -= dy
+                            self.rect.center = self.position
+                            self.linear_pos += 1
+                    else:
+                        if self.linear_pos > -self.restriction:
+                            self.position[0] -= dx
+                            self.position[1] += dy
+                            self.rect.center = self.position
+                            self.linear_pos -= 1
+                else:
+                    if ball_to_pad > self.angle%math.pi and ball_to_pad <= perp:
+                        if self.linear_pos < self.restriction:
+                            self.position[0] -= dx
+                            self.position[1] += dy
+                            self.rect.center = self.position
+                            self.linear_pos += 1
+                    else:
+                        if self.linear_pos > -self.restriction:
+                            self.position[0] += dx
+                            self.position[1] -= dy
+                            self.rect.center = self.position
+                            self.linear_pos -= 1
+
+def getColor(i):
+    return (255 - int(abs(i * 2 / NUM_PADDLES - 1) * 255), 0, int(abs(i * 2 / NUM_PADDLES - 1) * 255))
 
 paddles = pygame.sprite.Group()
 pygame.init()
@@ -112,11 +184,13 @@ def main():
     pygame.draw.circle(background, (0,0,0), (300,300), 240)
     ball_timer = 0
     rallies = 0
-    for i in range(NUM_PADDLES):
+    for i in range(NUM_PADDLES - AI_PLAYERS):
         if i < UNIQUE_KEYS.__len__():
-            Paddle([300+250*math.sin(math.pi*i/(NUM_PADDLES/2)), 300+250*math.cos(math.pi*i/(NUM_PADDLES/2))], 100, 10, i*math.pi/(NUM_PADDLES/2), (255 - i*int(255/NUM_PADDLES),0, i*int(255/NUM_PADDLES)), UNIQUE_KEYS[i], paddles)
+            Paddle([300+250*math.sin(math.pi*i/(NUM_PADDLES/2)), 300+250*math.cos(math.pi*i/(NUM_PADDLES/2))], 100, 10, i*math.pi/(NUM_PADDLES/2), getColor(i), UNIQUE_KEYS[i], False, paddles)
         else:
-            Paddle([300+250*math.sin(math.pi*i/(NUM_PADDLES/2)), 300+250*math.cos(math.pi*i/(NUM_PADDLES/2))], 100, 10, i*math.pi/(NUM_PADDLES/2), (255 - i*int(255/NUM_PADDLES),0, i*int(255/NUM_PADDLES)), UNIQUE_KEYS[0], paddles)
+            Paddle([300+250*math.sin(math.pi*i/(NUM_PADDLES/2)), 300+250*math.cos(math.pi*i/(NUM_PADDLES/2))], 100, 10, i*math.pi/(NUM_PADDLES/2), getColor(i), UNIQUE_KEYS[0], False, paddles)
+    for i in range(NUM_PADDLES - AI_PLAYERS, NUM_PADDLES):
+        Paddle([300+250*math.sin(math.pi*i/(NUM_PADDLES/2)), 300+250*math.cos(math.pi*i/(NUM_PADDLES/2))], 100, 10, i*math.pi/(NUM_PADDLES/2), getColor(i), UNIQUE_KEYS[0], True, paddles)
     ball = Ball((300,300), random.random() * math.pi*2, (5, 5))
     paused = False
     while True:
@@ -125,7 +199,7 @@ def main():
             screen.blit(background, background.get_rect())
             paddles.draw(screen)
             for p in paddles.sprites():
-                p.update()
+                p.update(ball)
             screen.blit(ball.image,ball.rect)
             pygame.display.flip()
             if ball_timer > 0:
