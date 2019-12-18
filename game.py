@@ -1,11 +1,16 @@
 import sys
+import colorsys
 import math
 import random
 import pygame
 
 NUM_PADDLES = 5 #works best with at least 5 for single player, 4 for multi player
-AI_PLAYERS = 5
-MULTI = True
+AI_PLAYERS = 5 #max seems to be 448 for some reason
+MULTI = False
+PADDLE_LENGTH = 60
+PADDLE_THICKNESS = 10
+BALL_SPEED = 3
+PADDLE_SPEED = 5 # Paddle's distance restriction scales with speed, this should be fixed
 UNIQUE_KEYS = [(pygame.K_BACKQUOTE, pygame.K_1),
                (pygame.K_LEFT, pygame.K_RIGHT), (pygame.K_a, pygame.K_d),
                (pygame.K_5, pygame.K_6), (pygame.K_8, pygame.K_9),
@@ -28,7 +33,7 @@ UNIQUE_KEYS = [(pygame.K_BACKQUOTE, pygame.K_1),
 class Ball(pygame.sprite.Sprite):
     def __init__(self, pos, direction, size, *groups):
         super().__init__(groups)
-        self.normspeed = 3 #never set this higher than 1/2 paddle thickness
+        self.normspeed = BALL_SPEED #never set this higher than 1/2 paddle thickness
         self.speed = self.normspeed
         self.angle = direction
         self.image = pygame.Surface(size)
@@ -65,7 +70,7 @@ class Paddle(pygame.sprite.Sprite):
             pygame.draw.line(self.image, color, (0,0), (width, height), thickness)
         else:
             pygame.draw.line(self.image, color, (0, height), (width, 0), thickness)
-        self.speed = 5
+        self.speed = PADDLE_SPEED
         self.angle = angle%(2*math.pi)
         self.mask = pygame.mask.from_surface(self.image)
         self.keys = keys
@@ -163,8 +168,18 @@ class Paddle(pygame.sprite.Sprite):
                             self.rect.center = self.position
                             self.linear_pos -= 1
 
-def getColor(i):
-    return (255 - int(abs(i * 2 / NUM_PADDLES - 1) * 255), 0, int(abs(i * 2 / NUM_PADDLES - 1) * 255))
+def getColor(x):
+    #k = float(1/3)
+    #ymax = float(255)
+    #xmax = float(NUM_PADDLES) - 1
+    #r = max(ymax/(k*xmax)*(abs(x-xmax/2) - xmax * (1/2-k)), 0)#(3/xmax)*255*(abs(i-(xmax/2))) - (255/2)
+    #g = max(-ymax/(k*xmax)*(abs(x-k*xmax) - k*xmax), 0)
+    #b = max(-ymax/(k*xmax)*(abs(x-(1-k)*xmax) - k*xmax), 0)
+    #print(r, g, b)
+    return (hsv2rgb((1/NUM_PADDLES)*x,1,1))
+
+def hsv2rgb(h,s,v):
+    return tuple(round(i * 255) for i in colorsys.hsv_to_rgb(h,s,v))
 
 paddles = pygame.sprite.Group()
 pygame.init()
@@ -184,11 +199,11 @@ def main():
     rallies = 0
     for i in range(NUM_PADDLES - AI_PLAYERS):
         if i < UNIQUE_KEYS.__len__():
-            Paddle([300+250*math.sin(math.pi*i/(NUM_PADDLES/2)), 300+250*math.cos(math.pi*i/(NUM_PADDLES/2))], 100, 10, i*math.pi/(NUM_PADDLES/2), getColor(i), UNIQUE_KEYS[i], False, paddles)
+            Paddle([300+250*math.sin(math.pi*i/(NUM_PADDLES/2)), 300+250*math.cos(math.pi*i/(NUM_PADDLES/2))], PADDLE_LENGTH, PADDLE_THICKNESS, i*math.pi/(NUM_PADDLES/2), getColor(i), UNIQUE_KEYS[i], False, paddles)
         else:
-            Paddle([300+250*math.sin(math.pi*i/(NUM_PADDLES/2)), 300+250*math.cos(math.pi*i/(NUM_PADDLES/2))], 100, 10, i*math.pi/(NUM_PADDLES/2), getColor(i), UNIQUE_KEYS[0], False, paddles)
+            Paddle([300+250*math.sin(math.pi*i/(NUM_PADDLES/2)), 300+250*math.cos(math.pi*i/(NUM_PADDLES/2))], PADDLE_LENGTH, PADDLE_THICKNESS, i*math.pi/(NUM_PADDLES/2), getColor(i), UNIQUE_KEYS[0], False, paddles)
     for i in range(NUM_PADDLES - AI_PLAYERS, NUM_PADDLES):
-        Paddle([300+250*math.sin(math.pi*i/(NUM_PADDLES/2)), 300+250*math.cos(math.pi*i/(NUM_PADDLES/2))], 100, 10, i*math.pi/(NUM_PADDLES/2), getColor(i), UNIQUE_KEYS[0], True, paddles)
+        Paddle([300+250*math.sin(math.pi*i/(NUM_PADDLES/2)), 300+250*math.cos(math.pi*i/(NUM_PADDLES/2))], PADDLE_LENGTH, PADDLE_THICKNESS, i*math.pi/(NUM_PADDLES/2), getColor(i), UNIQUE_KEYS[0], True, paddles)
     ball = Ball((300,300), random.random() * math.pi*2, (5, 5))
     paused = False
     while True:
