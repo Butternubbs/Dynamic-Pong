@@ -4,13 +4,22 @@ import math
 import random
 import pygame
 
-NUM_PADDLES = 5 #works best with at least 5 for single player, 4 for multi player
-AI_PLAYERS = 5 #max seems to be 448 for some reason
+NUM_PADDLES = 200 #works best with at least 5 for single player, 4 for multi player
+AI_PLAYERS = 200 #max seems to be 448 for some reason
 MULTI = False
+
 PADDLE_LENGTH = 60
 PADDLE_THICKNESS = 10
+PADDLE_RADIUS = 250
+PADDLE_RESTRICTION = 60 #how far a paddle can move in one direction (scales with speed)
+PADDLE_SPEED = 5
+
+BALL_SIZE = 5
 BALL_SPEED = 3
-PADDLE_SPEED = 5 # Paddle's distance restriction scales with speed, this should be fixed
+
+SCREEN_SIZE = 600
+FPS = 60
+
 UNIQUE_KEYS = [(pygame.K_BACKQUOTE, pygame.K_1),
                (pygame.K_LEFT, pygame.K_RIGHT), (pygame.K_a, pygame.K_d),
                (pygame.K_5, pygame.K_6), (pygame.K_8, pygame.K_9),
@@ -37,8 +46,8 @@ class Ball(pygame.sprite.Sprite):
         self.speed = self.normspeed
         self.angle = direction
         self.image = pygame.Surface(size)
-        self.image.fill((255,255,255))
-        self.rect = self.image.get_rect(topleft = pos)
+        self.image.fill((255, 255, 255))
+        self.rect = self.image.get_rect(topleft=pos)
         self.position = list(self.rect.center)
         self.mask = pygame.mask.from_surface(self.image)
         self.mask.fill()
@@ -74,7 +83,7 @@ class Paddle(pygame.sprite.Sprite):
         self.angle = angle%(2*math.pi)
         self.mask = pygame.mask.from_surface(self.image)
         self.keys = keys
-        self.restriction = 40
+        self.restriction = 60#int((1/(2*PADDLE_SPEED))*(PADDLE_RADIUS + (PADDLE_LENGTH/2)))
         self.linear_pos = 0
     def update(self, ball):
         dy = self.speed*math.sin(self.angle)
@@ -82,13 +91,13 @@ class Paddle(pygame.sprite.Sprite):
         if not self.ai:
             pressed = pygame.key.get_pressed()
             if not MULTI:
-                if pressed[pygame.K_LEFT]:
+                if pressed[pygame.K_RIGHT]:
                     if self.linear_pos < self.restriction:
                         self.position[0] -= dx
                         self.position[1] += dy
                         self.rect.center = self.position
                         self.linear_pos += 1
-                elif pressed[pygame.K_RIGHT]:
+                elif pressed[pygame.K_LEFT]:
                     if self.linear_pos > -self.restriction:
                         self.position[0] += dx
                         self.position[1] -= dy
@@ -182,29 +191,38 @@ def hsv2rgb(h,s,v):
     return tuple(round(i * 255) for i in colorsys.hsv_to_rgb(h,s,v))
 
 paddles = pygame.sprite.Group()
-pygame.init()
-screen = pygame.display.set_mode((600, 600))
-pygame.display.set_caption("Pong")
 timer = pygame.time.Clock()
 
 def main():
-    background = pygame.Surface((600,600))
-    pygame.draw.circle(background, (200,50,0), (300,300), 440)
-    pygame.draw.circle(background, (160,40,0), (300,300), 400)
-    pygame.draw.circle(background, (120,30,0), (300,300), 360)
-    pygame.draw.circle(background, (80,20,0), (300,300), 320)
-    pygame.draw.circle(background, (40,10,0), (300,300), 280)
-    pygame.draw.circle(background, (0,0,0), (300,300), 240)
+    pygame.init()
+    screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE), pygame.RESIZABLE)
+    fullscreen = False
+    pygame.display.set_caption("Pong")
+    background = pygame.Surface((SCREEN_SIZE,SCREEN_SIZE))
+    center = int(SCREEN_SIZE/2)
+    pygame.draw.circle(background, (200,50,0), (center,center), int(center * 1.5))
+    pygame.draw.circle(background, (160,40,0), (center,center), int(center * 1.35))
+    pygame.draw.circle(background, (120,30,0), (center,center), int(center * 1.2))
+    pygame.draw.circle(background, (80,20,0), (center,center), int(center * 1.05))
+    pygame.draw.circle(background, (40,10,0), (center,center), int(center * 0.9))
+    pygame.draw.circle(background, (0,0,0), (center,center), int(center * 0.75))
     ball_timer = 0
     rallies = 0
     for i in range(NUM_PADDLES - AI_PLAYERS):
         if i < UNIQUE_KEYS.__len__():
-            Paddle([300+250*math.sin(math.pi*i/(NUM_PADDLES/2)), 300+250*math.cos(math.pi*i/(NUM_PADDLES/2))], PADDLE_LENGTH, PADDLE_THICKNESS, i*math.pi/(NUM_PADDLES/2), getColor(i), UNIQUE_KEYS[i], False, paddles)
+            Paddle([center+PADDLE_RADIUS*math.sin(math.pi*i/(NUM_PADDLES/2)), center+PADDLE_RADIUS*math.cos(math.pi*i/(NUM_PADDLES/2))], PADDLE_LENGTH, PADDLE_THICKNESS, i*math.pi/(NUM_PADDLES/2), getColor(i), UNIQUE_KEYS[i], False, paddles)
         else:
-            Paddle([300+250*math.sin(math.pi*i/(NUM_PADDLES/2)), 300+250*math.cos(math.pi*i/(NUM_PADDLES/2))], PADDLE_LENGTH, PADDLE_THICKNESS, i*math.pi/(NUM_PADDLES/2), getColor(i), UNIQUE_KEYS[0], False, paddles)
+            Paddle([center+PADDLE_RADIUS*math.sin(math.pi*i/(NUM_PADDLES/2)), center+PADDLE_RADIUS*math.cos(math.pi*i/(NUM_PADDLES/2))], PADDLE_LENGTH, PADDLE_THICKNESS, i*math.pi/(NUM_PADDLES/2), getColor(i), UNIQUE_KEYS[0], False, paddles)
     for i in range(NUM_PADDLES - AI_PLAYERS, NUM_PADDLES):
-        Paddle([300+250*math.sin(math.pi*i/(NUM_PADDLES/2)), 300+250*math.cos(math.pi*i/(NUM_PADDLES/2))], PADDLE_LENGTH, PADDLE_THICKNESS, i*math.pi/(NUM_PADDLES/2), getColor(i), UNIQUE_KEYS[0], True, paddles)
-    ball = Ball((300,300), random.random() * math.pi*2, (5, 5))
+        Paddle([center+PADDLE_RADIUS*math.sin(math.pi*i/(NUM_PADDLES/2)), center+PADDLE_RADIUS*math.cos(math.pi*i/(NUM_PADDLES/2))], PADDLE_LENGTH, PADDLE_THICKNESS, i*math.pi/(NUM_PADDLES/2), getColor(i), UNIQUE_KEYS[0], True, paddles)
+    for i in range(NUM_PADDLES - AI_PLAYERS):
+        if i < UNIQUE_KEYS.__len__():
+            Paddle([center+PADDLE_RADIUS*math.sin(math.pi*i/(NUM_PADDLES/2)), center+PADDLE_RADIUS*math.cos(math.pi*i/(NUM_PADDLES/2))], PADDLE_LENGTH, PADDLE_THICKNESS, i*math.pi/(NUM_PADDLES/2), getColor(i), UNIQUE_KEYS[i], False, paddles)
+        else:
+            Paddle([center+PADDLE_RADIUS*math.sin(math.pi*i/(NUM_PADDLES/2)), center+PADDLE_RADIUS*math.cos(math.pi*i/(NUM_PADDLES/2))], PADDLE_LENGTH, PADDLE_THICKNESS, i*math.pi/(NUM_PADDLES/2), getColor(i), UNIQUE_KEYS[0], False, paddles)
+    for i in range(NUM_PADDLES - AI_PLAYERS, NUM_PADDLES):
+        Paddle([center+PADDLE_RADIUS*math.sin(math.pi*i/(NUM_PADDLES/2)), center+PADDLE_RADIUS*math.cos(math.pi*i/(NUM_PADDLES/2))], PADDLE_LENGTH, PADDLE_THICKNESS, i*math.pi/(NUM_PADDLES/2), getColor(i), UNIQUE_KEYS[0], True, paddles)
+    ball = Ball((center,center), random.random() * math.pi*2, (BALL_SIZE, BALL_SIZE))
     paused = False
     while True:
         if not paused:
@@ -219,12 +237,12 @@ def main():
                 ball_timer -= 1
             else:
                 rallies += ball.update()
-            if ball.rect.left > 650 or ball.rect.right < -50 or ball.rect.top > 650 or ball.rect.bottom < -50:
-                ball = Ball((300,300), random.random() * math.pi*2, (5, 5))
-                ball_timer += 15
+            if ball.rect.left > SCREEN_SIZE+50 or ball.rect.right < -50 or ball.rect.top > SCREEN_SIZE+50 or ball.rect.bottom < -50:
+                ball = Ball((center,center), random.random() * math.pi*2, (BALL_SIZE, BALL_SIZE))
+                ball_timer += 25
                 print("Rallies: " + str(rallies))
                 rallies = 0
-        timer.tick(60)
+        timer.tick(FPS)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -235,6 +253,13 @@ def main():
                     sys.exit()
                 if event.key == pygame.K_SPACE:
                     paused = not paused
+                if event.key == pygame.K_LSHIFT:
+                    if not fullscreen:
+                        screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE), pygame.FULLSCREEN)
+                        fullscreen = True
+                    else:
+                        screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE), pygame.RESIZABLE)
+                        fullscreen = False
 
 if __name__ == "__main__":
     main()
